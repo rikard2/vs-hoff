@@ -35,6 +35,12 @@ export class Resultset {
 
 export class HoffQuery {
     public constructor() {
+        let provider = new HoffQueryTextDocumentContentProvider();
+        let providerName = 'resultset-preview';
+        let reg = vscode.workspace.registerTextDocumentContentProvider(
+            'resultset-preview',
+            provider
+        );
     }
 
     public static Timeout(): Promise<Boolean> {
@@ -45,74 +51,52 @@ export class HoffQuery {
         });
     }
 
-    public static LoopIt(name): Promise<Object[]> {
+    public static LoopIt(name, provider: HoffQueryTextDocumentContentProvider): Promise<Resultset> {
         return HoffRequest.Call(name)
-            .then((arr: Object[]) => {
-                let alldone = true;
-                for (let i = 0; i < arr.length; i++) {
-                    if (arr[i]['executing']) {
-                        alldone = false;
-                    }
-                }
-
-                if (alldone) {
-                    return arr;
-                } else {
+            .then((resultset: Resultset) => {
+                HoffQuery.resultsets[resultset.queryid] = resultset;
+                provider.update(
+                    vscode.Uri.parse('css-preview://authority/css-preview'), Object.keys(HoffQuery.resultsets).map((x) => { return HoffQuery.resultsets[x]; }));
+                if (resultset.executing) {
                     return HoffQuery.Timeout().then( () => {
-                        return this.LoopIt(name);
+                        return this.LoopIt(name, provider);
                     });
+                } else {
+                    return Promise.resolve<Resultset>(resultset);
                 }
             });
     }
 
-    public static ConnectAndExecute(): void {
-        HoffConnection.MaybeChoose()
+    public static ConnectAndExecute(context: vscode.ExtensionContext, provider: HoffQueryTextDocumentContentProvider): Promise<void> {
+        HoffQuery.resultsets = {};
+        return HoffConnection.MaybeChoose()
             .then( (connection: HoffConnection) => {
                 if (connection) {
-                    this.Execute(connection);
+                    this.Execute(context, connection, provider);
                 }
             })
             .catch((error) => {
-
             });
     }
 
-    public static Execute(connection: HoffConnection): void {
+    public static resultsets: Object = { };
+    public static Execute(context: vscode.ExtensionContext, connection: HoffConnection, provider: HoffQueryTextDocumentContentProvider): Promise<void> {
         let doc = vscode.window.activeTextEditor.document;
         let text = doc.getText();
 
         let request = new HoffServerQueryResultRequest();
         request.query = text;
         request.alias = connection.alias;
-        HoffRequest.Call('query', request).then((result) => {
-            let name = result['Url'].match(/result.+$/)[0];
-            return HoffQuery.LoopIt(name).then((resultsets: Resultset[]) => {
-                HoffQuery.ShowResultsets(resultsets);
+        return HoffRequest.Call('query', request).then((result) => {
+            result['queryids'].forEach(queryId => {
+                HoffQuery.LoopIt('result/' + queryId, provider).then((resultset: Resultset) => {
+
+                }); 
             });
         });
     }
 
     private static _providers: vscode.Disposable[] = [];
-    public static ShowResultsets(resultsets: Resultset[]) {
-        let providers = resultsets.forEach((resultset, index) => {
-            let provider = new HoffQueryTextDocumentContentProvider(resultset);
-            let providerName = 'resultset-preview' + index;
-            let reg = vscode.workspace.registerTextDocumentContentProvider(
-                'resultset-preview' + index,
-                provider
-            );
-            provider.update(vscode.Uri.parse(
-                'resultset-preview' + index + '://authority/' + providerName
-            ));
+    public static _provider: HoffQueryTextDocumentContentProvider = null;
 
-            vscode.commands.executeCommand(
-                'vscode.previewHtml',
-                vscode.Uri.parse(
-                    'resultset-preview' + index + '://authority/' + providerName
-                ),
-                vscode.ViewColumn.Two,
-                resultset.statusmessage
-            )
-        });
-    }
 }

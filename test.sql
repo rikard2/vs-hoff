@@ -1,0 +1,5 @@
+SELECT *
+FROM Users U
+LEFT JOIN whatevs w ON TRUE
+LIMIT 5;
+SELECT 1;

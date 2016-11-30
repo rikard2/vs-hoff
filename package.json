@@ -16,6 +16,13 @@
     ],
     "main": "./out/src/extension",
     "contributes": {
+        "keybindings": [
+        {
+            "command": "extension.executeQuery",
+            "key": "ctrl+alt+enter",
+            "when": "editorFocus"
+        }
+        ],
         "commands": [
             {
                 "command": "extension.executeQuery",
@@ -24,6 +31,10 @@
             {
                 "command": "extension.chooseConnection",
                 "title": "Choose Connection"
+            },
+            {
+                "command": "extension.wtf",
+                "title": "wtf"
             }
         ]
     },

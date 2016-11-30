@@ -7,6 +7,7 @@ import { HoffQuery }                        from './query/query';
 import { HoffConnection }                   from './common/connection'
 import { HoffHoverProvider }                from './providers/hoverProvider'
 import { HoffSignatureHelpProvider }        from './providers/signatureHelpProvider'
+import { HoffQueryTextDocumentContentProvider } from './query/queryTabDocumentProvider'
 
 const SQL: vscode.DocumentFilter = { language: 'sql', scheme: 'file' };
 
@@ -17,6 +18,26 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerHoverProvider(SQL, new HoffHoverProvider()));
     context.subscriptions.push(vscode.languages.registerSignatureHelpProvider(SQL, new HoffSignatureHelpProvider(), '('));
     context.subscriptions.push(vscode.commands.registerCommand('extension.chooseConnection', HoffConnection.Choose));
-    context.subscriptions.push(vscode.commands.registerCommand('extension.executeQuery', () => { HoffQuery.ConnectAndExecute() }));
+   // context.subscriptions.push(vscode.commands.registerCommand('extension.executeQuery', () => { HoffQuery.ConnectAndExecute(context) }));
+   
+   
+    let previewUri = vscode.Uri.parse('css-preview://authority/css-preview');
+    let provider = new HoffQueryTextDocumentContentProvider();
+    let registration = vscode.workspace.registerTextDocumentContentProvider('css-preview', provider);
+
+    let disposable = vscode.commands.registerCommand('extension.executeQuery', () => {
+        HoffQuery.ConnectAndExecute(context, provider).then(() => {
+            return vscode.commands.executeCommand('vscode.previewHtml', previewUri, vscode.ViewColumn.Two, 'CSS Property Preview').then((success) => {
+                vscode.window.visibleTextEditors[0].show();
+            }, (reason) => {
+                vscode.window.showErrorMessage(reason);
+            });
+        })
+    });
+
+    context.subscriptions.push(vscode.commands.registerCommand('extension.wtf', () => {
+        //provider.update(previewUri);
+    }));
+    context.subscriptions.push(disposable, registration);
 }
 export function deactivate() { }
