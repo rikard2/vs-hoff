@@ -55,9 +55,10 @@ export class HoffQuery {
         return HoffRequest.Call(name)
             .then((resultset: Resultset) => {
                 HoffQuery.resultsets[resultset.queryid] = resultset;
-                provider.update(
-                    vscode.Uri.parse('css-preview://authority/css-preview'), Object.keys(HoffQuery.resultsets).map((x) => { return HoffQuery.resultsets[x]; }));
-                if (resultset.executing) {
+                if (resultset.error) {
+                    return Promise.resolve<Resultset>(resultset);
+                }
+                if (resultset.executing || !resultset.complete) {
                     return HoffQuery.Timeout().then( () => {
                         return this.LoopIt(name, provider);
                     });
@@ -88,10 +89,13 @@ export class HoffQuery {
         request.query = text;
         request.alias = connection.alias;
         return HoffRequest.Call('query', request).then((result) => {
-            result['queryids'].forEach(queryId => {
-                HoffQuery.LoopIt('result/' + queryId, provider).then((resultset: Resultset) => {
-
-                }); 
+            return Promise.all<Resultset>(result['queryids'].map(queryId => {
+                return HoffQuery.LoopIt('result/' + queryId, provider).then(x => {
+                    return x;
+                });
+            })).then(resultsets => {
+                provider.update( vscode.Uri.parse('css-preview://authority/css-preview'), resultsets );
+                //return resultsets;
             });
         });
     }

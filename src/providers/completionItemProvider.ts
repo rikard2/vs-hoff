@@ -23,7 +23,7 @@ export class HoffCompletionItemProvider implements vscode.CompletionItemProvider
         let absolutPosition = document.offsetAt(position);
 
         let connection: HoffConnection = vscode.window.activeTextEditor['connection'];
-        if (!connection.alias) {
+        if (!connection || !connection.alias) {
             return Promise.resolve<vscode.CompletionItem[]>([]);
         }
 
@@ -34,8 +34,15 @@ export class HoffCompletionItemProvider implements vscode.CompletionItemProvider
 
         return HoffRequest.Call('completions', request)
             .then((response: HoffServerCompletionResponse[]) => {
-                return response.map( (completion: HoffServerCompletionResponse) => {
-                    return new vscode.CompletionItem(completion.text);
+                let a = 'A';
+                return response.map( (completion: HoffServerCompletionResponse, index) => {
+                    console.log('index', completion.text, index);
+                    if (index >= 100) return Promise.resolve<vscode.CompletionItem[]>([]);
+                    let c = new vscode.CompletionItem(completion.text, vscode.CompletionItemKind.Class);
+                    c.detail = String.fromCharCode(97 + index) + ' => ' + index;
+                    c.sortText = a;
+                    a += 'A';
+                    return c;
                 });
             })
             .catch( (error) => {

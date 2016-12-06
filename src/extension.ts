@@ -27,7 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     let disposable = vscode.commands.registerCommand('extension.executeQuery', () => {
         HoffQuery.ConnectAndExecute(context, provider).then(() => {
-            return vscode.commands.executeCommand('vscode.previewHtml', previewUri, vscode.ViewColumn.Two, 'CSS Property Preview').then((success) => {
+            return vscode.commands.executeCommand('vscode.previewHtml', previewUri, vscode.ViewColumn.Two, 'Resultset').then((success) => {
                 vscode.window.visibleTextEditors[0].show();
             }, (reason) => {
                 vscode.window.showErrorMessage(reason);
